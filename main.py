@@ -16,7 +16,7 @@ st.set_page_config(
 # Login — antes de cualquier contenido
 # ==============================
 _USERS = {
-    "admin":  "admin",
+    "admin":  "def123",
     "viewer": "def123",
 }
 
