@@ -32,7 +32,7 @@ if not st.session_state.logged_in:
         <div style='text-align:center;padding:32px 0 16px;'>
           <div style='font-size:48px;'>🗳️</div>
           <div style='font-size:22px;font-weight:800;color:#003770;letter-spacing:-.5px;margin-top:6px;'>
-            ONPE
+            DEFENSORIA DEL PUEBLO
           </div>
           <div style='font-size:13px;color:#64748b;margin-top:4px;'>
             Sistema de Locales de Votación
@@ -63,6 +63,16 @@ if not st.session_state.logged_in:
 
 st.markdown("""
 <style>
+  /* Eliminar espacio superior del contenedor principal */
+  .block-container                            { padding-top: 0 !important; }
+  .stMainBlockContainer                       { padding-top: 0 !important; }
+  section[data-testid="stMain"] > div:first-child { padding-top: 0 !important; }
+  /* Toolbar de Streamlit (Deploy / Share / GitHub) — oculto */
+  header[data-testid="stHeader"]              { display: none !important; }
+  [data-testid="stToolbar"]                   { display: none !important; }
+  [data-testid="stDecoration"]                { display: none !important; }
+  [data-testid="stStatusWidget"]              { display: none !important; }
+  #MainMenu                                   { display: none !important; }
   /* Sidebar collapse buttons ocultos */
   [data-testid="stSidebarCollapsedControl"]   { display: none !important; }
   [data-testid="stSidebarCollapseButton"]     { display: none !important; }
@@ -139,6 +149,56 @@ st.components.v1.html("""
   var obs = new MutationObserver(stylePopoverBtn);
   obs.observe(window.parent.document.body, { childList: true, subtree: true });
 })();
+</script>
+""", height=0, scrolling=False)
+
+# ── Contador de rerun: hace el HTML único en cada rerun → fuerza recreación del iframe ──
+if "_run_id" not in st.session_state:
+    st.session_state["_run_id"] = 0
+st.session_state["_run_id"] += 1
+_run_id = st.session_state["_run_id"]
+
+# ── Overlay de carga (se oculta vía JS cuando todo está listo) ──
+with open("images/loading2.png", "rb") as _lf:
+    _loading_src = "data:image/png;base64," + base64.b64encode(_lf.read()).decode()
+
+st.components.v1.html(f"""<!-- {_run_id} -->
+<script>
+(function(){{
+  var doc = window.parent.document;
+
+  // Inyectar CSS una sola vez
+  if (!doc.getElementById('st-ld-css')) {{
+    var s = doc.createElement('style');
+    s.id = 'st-ld-css';
+    s.textContent = [
+      '@keyframes flipY{{0%{{transform:perspective(600px) rotateY(0deg)}}100%{{transform:perspective(600px) rotateY(360deg)}}}}',
+      '@keyframes ldots{{0%{{content:"."}}33%{{content:".."}}66%{{content:"..."}}}}',
+      '#st-loading-overlay{{position:fixed;top:0;left:0;width:100vw;height:100vh;',
+        'background:rgba(255,255,255,.93);z-index:99998;',
+        'display:flex;flex-direction:column;align-items:center;justify-content:center;',
+        'gap:24px;pointer-events:none;}}',
+      '#st-loading-overlay img{{width:220px;height:220px;object-fit:contain;',
+        'animation:flipY 1.6s linear infinite;}}',
+      '#st-loading-overlay .ld-text{{font-family:Segoe UI,Arial,sans-serif;',
+        'font-size:18px;font-weight:600;color:#003770;letter-spacing:3px;}}',
+      '#st-loading-overlay .ld-dots{{display:inline-block;min-width:22px;',
+        'animation:ldots 1.2s steps(1,end) infinite;}}'
+    ].join('');
+    doc.head.appendChild(s);
+  }}
+
+  // Crear o mostrar el overlay
+  var el = doc.getElementById('st-loading-overlay');
+  if (!el) {{
+    el = doc.createElement('div');
+    el.id = 'st-loading-overlay';
+    el.innerHTML = '<img src="{_loading_src}"><span class="ld-text">Loading<span class="ld-dots">.</span></span>';
+    doc.body.appendChild(el);
+  }} else {{
+    el.style.display = 'flex';
+  }}
+}})();
 </script>
 """, height=0, scrolling=False)
 
@@ -296,7 +356,8 @@ _DEFAULT_ICON = ICON_MAP["*Sin Cobertura"]
 # ==============================
 # Estado de sesión
 # ==============================
-for _k, _v in [("gc_cob", None), ("gc_loc", None), ("clicked_local", None)]:
+for _k, _v in [("gc_cob", None), ("gc_loc", None), ("clicked_local", None),
+               ("act_dep", "TODOS"), ("act_prov", "TODOS"), ("act_dist", "TODOS")]:
     if _k not in st.session_state:
         st.session_state[_k] = _v
 
@@ -306,6 +367,57 @@ for _k, _v in [("gc_cob", None), ("gc_loc", None), ("clicked_local", None)]:
 def _cb_donut():
     pts = getattr(getattr(st.session_state.get("donut_chart"), "selection", None), "points", [])
     st.session_state.gc_cob = pts[0]["label"] if pts else None
+
+
+# ==============================
+# Filtros aplicados — solo se actualizan al pulsar "Cargar mapa"
+# ==============================
+_act_dep  = st.session_state.act_dep
+_act_prov = st.session_state.act_prov
+_act_dist = st.session_state.act_dist
+
+df_f = df_base
+if _act_dep  != "TODOS": df_f = df_f[df_f["DEPARTAMENTO"] == _act_dep]
+if _act_prov != "TODOS": df_f = df_f[df_f["PROVINCIA"]    == _act_prov]
+if _act_dist != "TODOS": df_f = df_f[df_f["DISTRITO"]     == _act_dist]
+
+dep  = _act_dep
+prov = _act_prov
+dist = _act_dist
+
+# ==============================
+# Fragmento de filtros — solo reruns el sidebar, no el mapa
+# ==============================
+@st.fragment
+def _filtros_sidebar():
+    _a_dep  = st.session_state.act_dep
+    _a_prov = st.session_state.act_prov
+    _a_dist = st.session_state.act_dist
+
+    st.markdown("### 🔍 Filtros")
+
+    dep_opts = ["TODOS"] + sorted(df_base["DEPARTAMENTO"].dropna().unique())
+    _sel_dep = st.selectbox("Departamento", dep_opts,
+                            index=dep_opts.index(_a_dep) if _a_dep in dep_opts else 0)
+    _df_tmp = df_base if _sel_dep == "TODOS" else df_base[df_base["DEPARTAMENTO"] == _sel_dep]
+
+    prov_opts = ["TODOS"] + sorted(_df_tmp["PROVINCIA"].dropna().unique())
+    _sel_prov = st.selectbox("Provincia", prov_opts,
+                             index=prov_opts.index(_a_prov) if _a_prov in prov_opts else 0)
+    _df_tmp = _df_tmp if _sel_prov == "TODOS" else _df_tmp[_df_tmp["PROVINCIA"] == _sel_prov]
+
+    dist_opts = ["TODOS"] + sorted(_df_tmp["DISTRITO"].dropna().unique())
+    _sel_dist = st.selectbox("Distrito", dist_opts,
+                             index=dist_opts.index(_a_dist) if _a_dist in dist_opts else 0)
+
+    _has_changes = (_sel_dep != _a_dep or _sel_prov != _a_prov or _sel_dist != _a_dist)
+
+    if st.button("🗺️ Cargar mapa", use_container_width=True,
+                 type="primary" if _has_changes else "secondary", key="btn_load_map"):
+        st.session_state.act_dep  = _sel_dep
+        st.session_state.act_prov = _sel_prov
+        st.session_state.act_dist = _sel_dist
+        st.rerun(scope="app")
 
 
 # ==============================
@@ -358,7 +470,7 @@ with st.sidebar:
   }}
 </style>
 <div class="sb-hdr" id="sbh">
-  <div class="sb-title">🗳️ ONPE<br>Locales de Votación</div>
+  <div class="sb-title">🗳️ Defensoria del Pueblo <br>Locales de Votación</div>
   <div class="sb-sub">Total cargados: <b style="color:#bfdbfe;">{len(df_base):,}</b></div>
   <div class="sb-clock">
     <div id="sb-time">00:00:00</div>
@@ -387,27 +499,7 @@ with st.sidebar:
 </script>
 """, height=115, scrolling=False)
 
-    st.markdown("### 🔍 Filtros")
-
-    dep_opts = ["TODOS"] + sorted(df_base["DEPARTAMENTO"].dropna().unique())
-    dep = st.selectbox("Departamento", dep_opts)
-    df_f = df_base if dep == "TODOS" else df_base[df_base["DEPARTAMENTO"] == dep]
-
-    prov_opts = ["TODOS"] + sorted(df_f["PROVINCIA"].dropna().unique())
-    prov = st.selectbox("Provincia", prov_opts)
-    df_f = df_f if prov == "TODOS" else df_f[df_f["PROVINCIA"] == prov]
-
-    dist_opts = ["TODOS"] + sorted(df_f["DISTRITO"].dropna().unique())
-    dist = st.selectbox("Distrito", dist_opts)
-    df_f = df_f if dist == "TODOS" else df_f[df_f["DISTRITO"] == dist]
-
-    cob_opts = ["TODOS"] + sorted(df_base["COBERTURA"].dropna().unique())
-    cob = st.selectbox("Cobertura", cob_opts)
-    df_f = df_f if cob == "TODOS" else df_f[df_f["COBERTURA"] == cob]
-
-    tec_opts = ["TODOS"] + sorted(df_base["TIPO TECNOLOGIA"].dropna().unique())
-    tec = st.selectbox("Tecnología", tec_opts)
-    df_f = df_f if tec == "TODOS" else df_f[df_f["TIPO TECNOLOGIA"] == tec]
+    _filtros_sidebar()
 
     st.divider()
     st.markdown("### 🗺️ Visualización")
@@ -485,31 +577,32 @@ df_fisc = df_plot[_mask_fisc]
 _geo_dep_main = _load_geojson()
 _idx_dep, _idx_prov, _idx_dist = _build_geo_index()
 
-# Zoom y centro: siempre desde los puntos reales del df filtrado
-# El polígono GeoJSON se usa solo como respaldo si no hay puntos visibles
-if len(df_plot) > 0:
+# Zoom y centro: si hay filtro geográfico → bbox del polígono GeoJSON
+#                si es TODOS            → bbox de los puntos visibles
+_main_bbox = None
+if dist != "TODOS" and dep != "TODOS":
+    _main_bbox = _bbox_from_features(_idx_dist.get((dep.strip().upper(),
+                 prov.strip().upper() if prov != "TODOS" else "", dist.strip().upper()), []))
+elif prov != "TODOS" and dep != "TODOS":
+    _main_bbox = _bbox_from_features(_idx_prov.get((dep.strip().upper(), prov.strip().upper()), []))
+elif dep != "TODOS":
+    _main_bbox = _bbox_from_features([f for f in _geo_dep_main["features"]
+                 if f["properties"].get("NOMBDEP", "").strip().upper() == dep.strip().upper()])
+
+if _main_bbox:
+    # Centrar en la capa geográfica seleccionada (ignora qué puntos están visibles)
+    _bml, _bmx, _bnl, _bnx = _main_bbox
+    clat, clon = (_bml + _bmx) / 2, (_bnl + _bnx) / 2
+    zoom = _zoom_from_span(max(_bmx - _bml, _bnx - _bnl))
+elif len(df_plot) > 0:
+    # Sin filtro geográfico: centrar en los puntos visibles
     _minlat, _maxlat = df_plot["LATITUD"].min(), df_plot["LATITUD"].max()
     _minlon, _maxlon = df_plot["LONGITUD"].min(), df_plot["LONGITUD"].max()
     clat = (_minlat + _maxlat) / 2
     clon = (_minlon + _maxlon) / 2
     zoom = _zoom_from_span(max(_maxlat - _minlat, _maxlon - _minlon))
 else:
-    # Sin puntos: centrar en el polígono geográfico seleccionado
-    _main_bbox = None
-    if dist != "TODOS" and dep != "TODOS":
-        _main_bbox = _bbox_from_features(_idx_dist.get((dep.strip().upper(),
-                     prov.strip().upper() if prov != "TODOS" else "", dist.strip().upper()), []))
-    elif prov != "TODOS" and dep != "TODOS":
-        _main_bbox = _bbox_from_features(_idx_prov.get((dep.strip().upper(), prov.strip().upper()), []))
-    elif dep != "TODOS":
-        _main_bbox = _bbox_from_features([f for f in _geo_dep_main["features"]
-                     if f["properties"].get("NOMBDEP", "").strip().upper() == dep.strip().upper()])
-    if _main_bbox:
-        _bml, _bmx, _bnl, _bnx = _main_bbox
-        clat, clon = (_bml + _bmx) / 2, (_bnl + _bnx) / 2
-        zoom = _zoom_from_span(max(_bmx - _bml, _bnx - _bnl))
-    else:
-        clat, clon, zoom = -9.19, -75.015, 5 + _ZOOM_OFFSET
+    clat, clon, zoom = -9.19, -75.015, 5 + _ZOOM_OFFSET
 
 # Capa de sombreado para el mapa principal
 _main_shade_layers = []
@@ -560,10 +653,10 @@ elif prov != "TODOS":
     _pt_px = 9
 elif dep != "TODOS":
     _icon_size, _icon_scale = 4, 3
-    _pt_px = 5
+    _pt_px = 7
 else:
-    _icon_size, _icon_scale = 3, 3
-    _pt_px = 5
+    _icon_size, _icon_scale = 3, 4
+    _pt_px = 6
 
 _ikw = dict(get_position=["LONGITUD", "LATITUD"], get_icon="icon_data",
             get_size=_icon_size, size_scale=_icon_scale,
@@ -591,7 +684,7 @@ else:
 
 _gc_cob_key = st.session_state.gc_cob or ""
 _gc_loc_key = f"{st.session_state.gc_loc}" if st.session_state.gc_loc else ""
-_main_map_key = f"map_deck|{dep}|{prov}|{dist}|{cob}|{tec}|{_gc_cob_key}|{_gc_loc_key}|{_modo_viz}"
+_main_map_key = f"map_deck|{dep}|{prov}|{dist}|{_gc_cob_key}|{_gc_loc_key}|{_modo_viz}"
 
 def _cb_map():
     sel = st.session_state.get(_main_map_key)
@@ -1130,3 +1223,20 @@ with st.expander(f"Ver tabla de datos ({len(df_f):,} registros)"):
                  "TIPO TECNOLOGIA", "COBERTURA", "LATITUD", "LONGITUD"]
     cols_show = [c for c in cols_show if c in df_f.columns]
     st.dataframe(df_f[cols_show].reset_index(drop=True), height=300)
+
+# ── Ocultar overlay: el script se ejecuta cuando el iframe carga (todo ya renderizado) ──
+st.components.v1.html(f"""<!-- hide:{_run_id} -->
+<script>
+(function(){{
+  var doc = window.parent ? window.parent.document : document;
+  function hide() {{
+    var el = doc.getElementById('st-loading-overlay');
+    if (el) el.style.display = 'none';
+  }}
+  // Intento inmediato + reintentos por si pydeck aún está montando
+  hide();
+  setTimeout(hide, 400);
+  setTimeout(hide, 900);
+}})();
+</script>
+""", height=0, scrolling=False)
