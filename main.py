@@ -127,6 +127,16 @@ st.markdown("""
   }
   .stTabs [data-baseweb="tab-highlight"] { display: none !important; }
   .stTabs [data-baseweb="tab-border"]    { display: none !important; }
+  /* Botón "Cargar mapa" — mismo color que las pestañas activas */
+  [data-testid="stSidebar"] [data-testid="stBaseButton-primary"] {
+    background-color: #003770 !important;
+    border-color:     #003770 !important;
+    color: white !important;
+  }
+  [data-testid="stSidebar"] [data-testid="stBaseButton-primary"]:hover {
+    background-color: #00275a !important;
+    border-color:     #00275a !important;
+  }
 </style>
 """, unsafe_allow_html=True)
 
@@ -1263,19 +1273,23 @@ with st.expander(f"Ver tabla de datos ({len(df_f):,} registros)"):
     cols_show = [c for c in cols_show if c in df_f.columns]
     st.dataframe(df_f[cols_show].reset_index(drop=True), height=300)
 
-# ── Ocultar overlay: el script se ejecuta cuando el iframe carga (todo ya renderizado) ──
+# ── Ocultar overlay: polling cada 50ms hasta encontrarlo y ocultarlo ──
 st.components.v1.html(f"""<!-- hide:{_run_id} -->
 <script>
 (function(){{
-  var doc = window.parent ? window.parent.document : document;
-  function hide() {{
+  try {{
+    var doc = window.parent.document;
+    // Intento inmediato
     var el = doc.getElementById('st-loading-overlay');
-    if (el) el.style.display = 'none';
-  }}
-  // Intento inmediato + reintentos por si pydeck aún está montando
-  hide();
-  setTimeout(hide, 400);
-  setTimeout(hide, 900);
+    if (el) {{ el.style.display = 'none'; return; }}
+    // Si aún no existe, polling cada 50ms hasta que aparezca
+    var t = setInterval(function() {{
+      var el = doc.getElementById('st-loading-overlay');
+      if (el) {{ el.style.display = 'none'; clearInterval(t); }}
+    }}, 50);
+    // Seguridad: cancelar después de 15s si algo falla
+    setTimeout(function() {{ clearInterval(t); }}, 15000);
+  }} catch(e) {{}}
 }})();
 </script>
 """, height=0, scrolling=False)
