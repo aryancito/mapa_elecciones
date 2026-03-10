@@ -394,6 +394,7 @@ for _k, _v in [("gc_cob", None), ("gc_loc", None), ("clicked_local", None),
 def _cb_donut():
     pts = getattr(getattr(st.session_state.get("donut_chart"), "selection", None), "points", [])
     st.session_state.gc_cob = pts[0]["label"] if pts else None
+    st.session_state["_skip_loading"] = True
 
 
 # ==============================
@@ -719,6 +720,7 @@ def _cb_map():
     for objs in getattr(getattr(sel, "selection", None), "objects", {}).values():
         if objs:
             st.session_state.clicked_local = objs[0]
+            st.session_state["_skip_loading"] = True
             return
 
 deck = pdk.Deck(
