@@ -73,9 +73,12 @@ st.markdown("""
   [data-testid="stDecoration"]                { display: none !important; }
   [data-testid="stStatusWidget"]              { display: none !important; }
   #MainMenu                                   { display: none !important; }
-  /* Sidebar collapse buttons ocultos */
-  [data-testid="stSidebarCollapsedControl"]   { display: none !important; }
-  [data-testid="stSidebarCollapseButton"]     { display: none !important; }
+  /* Botón para abrir el sidebar cuando está colapsado — siempre visible */
+  [data-testid="stSidebarCollapsedControl"]   {
+    display: flex !important;
+    visibility: visible !important;
+    z-index: 999999 !important;
+  }
   /* Selectboxes del filtro más compactos */
   div[data-testid="stSelectbox"] label { font-size: 9px !important; margin-bottom: 0 !important; line-height: 1 !important; }
   div[data-testid="stSelectbox"] > div > div { min-height: 24px !important; font-size: 10px !important; padding-top: 0 !important; padding-bottom: 0 !important; }
