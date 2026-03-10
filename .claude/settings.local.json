@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \":*)",
+      "Bash(python -c \"import plotly; print\\(''plotly'', plotly.__version__\\)\")",
+      "Bash(python -c \"import altair; print\\(''altair'', altair.__version__\\)\")",
+      "Bash(python -c \"import main\")",
+      "Bash(mkdir -p \"d:/PY_python/elecciones/static\")",
+      "Bash(mkdir -p \"d:/PY_python/elecciones/.streamlit\")",
+      "Bash(cp \"d:/PY_python/elecciones/images_small/sin.png\" \"d:/PY_python/elecciones/static/sin.png\")",
+      "Bash(cp \"d:/PY_python/elecciones/images_small/ok.png\" \"d:/PY_python/elecciones/static/ok.png\")",
+      "Bash(cp \"d:/PY_python/elecciones/images_small/parcial.png\" \"d:/PY_python/elecciones/static/parcial.png\")",
+      "Bash(python -c \"import json; d=json.load\\(open\\(''d:/PY_python/elecciones/data/peru_departamental_simple.geojson'',encoding=''utf-8''\\)\\); print\\(list\\(d[''features''][0][''properties''].keys\\(\\)\\)\\)\")",
+      "Bash(ls d:/PY_python/elecciones/data/*.geojson)",
+      "Bash(python -c \"import json; d=json.load\\(open\\(''d:/PY_python/elecciones/data/peru_distrital_simple.geojson'',encoding=''utf-8''\\)\\); f=d[''features''][0]; print\\(list\\(f[''properties''].keys\\(\\)\\)\\); print\\(f[''properties'']\\)\")",
+      "Bash(python -c \"import json; d=json.load\\(open\\(''d:/_OMAR/python_scripts/mapa_elecciones/data/peru_departamental_simple.geojson'', encoding=''utf-8''\\)\\); f=d[''features''][0]; print\\(''Props:'', list\\(f[''properties''].keys\\(\\)\\)\\); print\\(''Ejemplo:'', f[''properties'']\\)\")"
+    ]
+  }
+}
