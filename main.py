@@ -67,18 +67,21 @@ st.markdown("""
   .block-container                            { padding-top: 0 !important; }
   .stMainBlockContainer                       { padding-top: 0 !important; }
   section[data-testid="stMain"] > div:first-child { padding-top: 0 !important; }
-  /* Toolbar de Streamlit (Deploy / Share / GitHub) — oculto */
-  header[data-testid="stHeader"]              { display: none !important; }
+  /* Header transparente y sin altura — los botones del sidebar siguen visibles */
+  header[data-testid="stHeader"]              {
+    background: transparent !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
   [data-testid="stToolbar"]                   { display: none !important; }
   [data-testid="stDecoration"]                { display: none !important; }
   [data-testid="stStatusWidget"]              { display: none !important; }
   #MainMenu                                   { display: none !important; }
-  /* Botón para abrir el sidebar cuando está colapsado — siempre visible */
-  [data-testid="stSidebarCollapsedControl"]   {
-    display: flex !important;
-    visibility: visible !important;
-    z-index: 999999 !important;
-  }
+  /* Botones nativos del sidebar ocultos — se clickean por JS desde el botón custom */
+  [data-testid="stSidebarCollapsedControl"],
+  [data-testid="stSidebarCollapseButton"]     { display: none !important; }
   /* Selectboxes del filtro más compactos */
   div[data-testid="stSelectbox"] label { font-size: 9px !important; margin-bottom: 0 !important; line-height: 1 !important; }
   div[data-testid="stSelectbox"] > div > div { min-height: 24px !important; font-size: 10px !important; padding-top: 0 !important; padding-bottom: 0 !important; }
@@ -722,13 +725,34 @@ deck = pdk.Deck(
 )
 
 # ==============================
-# Pestañas principales (justo después del header)
+# Fila: botón menú + pestañas
 # ==============================
-tab_locales, tab_calor, tab_intl = st.tabs([
-    "🗺️ Locales de Votación",
-    "🔥 Mapa de Calor — Electores",
-    "🌍 Internacional",
-])
+_c_menubtn, _c_tabs = st.columns([0.04, 0.96], gap="small")
+
+with _c_menubtn:
+    st.components.v1.html("""
+<button id="sb-menu-btn" title="Mostrar / ocultar menú lateral" style="
+  background:#003770; color:white; border:none; border-radius:7px;
+  width:36px; height:36px; font-size:20px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 2px 8px rgba(0,55,112,.35); margin-top:4px;">&#9776;</button>
+<script>
+document.getElementById('sb-menu-btn').onclick = function() {
+  var doc = window.parent.document;
+  var close = doc.querySelector('[data-testid="stSidebarCollapseButton"] button');
+  var open  = doc.querySelector('[data-testid="stSidebarCollapsedControl"] button');
+  if (close) close.click();
+  else if (open) open.click();
+};
+</script>
+""", height=44)
+
+with _c_tabs:
+    tab_locales, tab_calor, tab_intl = st.tabs([
+        "🗺️ Locales de Votación",
+        "🔥 Mapa de Calor — Electores",
+        "🌍 Internacional",
+    ])
 
 # ── Tab 1: mapa (col. izquierda) + KPIs y gráficos (col. derecha) ─────────────
 with tab_locales:
