@@ -12,18 +12,60 @@ st.set_page_config(
     layout="wide",
 )
 
+# ==============================
+# Login — antes de cualquier contenido
+# ==============================
+_USERS = {
+    "admin":  "admin",
+    "viewer": "def123",
+}
+
+for _k, _v in [("logged_in", False), ("login_user", ""), ("_login_err", False)]:
+    if _k not in st.session_state:
+        st.session_state[_k] = _v
+
+if not st.session_state.logged_in:
+    # ── Página de login centrada ──
+    _, _lc, _ = st.columns([1, 1.2, 1])
+    with _lc:
+        st.markdown("""
+        <div style='text-align:center;padding:32px 0 16px;'>
+          <div style='font-size:48px;'>🗳️</div>
+          <div style='font-size:22px;font-weight:800;color:#003770;letter-spacing:-.5px;margin-top:6px;'>
+            ONPE
+          </div>
+          <div style='font-size:13px;color:#64748b;margin-top:4px;'>
+            Sistema de Locales de Votación
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        with st.form("login_form"):
+            _u = st.text_input("Usuario", placeholder="usuario")
+            _p = st.text_input("Contraseña", type="password", placeholder="••••••••")
+            _btn = st.form_submit_button("Ingresar", use_container_width=True)
+
+        # Validación fuera del form para evitar conflicto con st.rerun()
+        if _btn:
+            if _USERS.get(_u.strip()) == _p:
+                st.session_state.logged_in  = True
+                st.session_state.login_user = _u.strip()
+                st.session_state._login_err = False
+                st.rerun()
+            else:
+                st.session_state._login_err = True
+                st.rerun()
+
+        if st.session_state._login_err:
+            st.error("Usuario o contraseña incorrectos.")
+
+    st.stop()
+
 st.markdown("""
 <style>
-  /* Header y sidebar */
-  .block-container { padding-top: 0 !important; }
-  .stMainBlockContainer { padding-top: 0 !important; }
-  section[data-testid="stMain"] > div:first-child { padding-top: 0 !important; }
-  header[data-testid="stHeader"]              { display: none !important; }
+  /* Sidebar collapse buttons ocultos */
   [data-testid="stSidebarCollapsedControl"]   { display: none !important; }
   [data-testid="stSidebarCollapseButton"]     { display: none !important; }
-  #MainMenu                                   { display: none !important; }
-  [data-testid="stToolbar"]                   { display: none !important; }
-  [data-testid="stStatusWidget"]              { display: none !important; }
   /* Selectboxes del filtro más compactos */
   div[data-testid="stSelectbox"] label { font-size: 9px !important; margin-bottom: 0 !important; line-height: 1 !important; }
   div[data-testid="stSelectbox"] > div > div { min-height: 24px !important; font-size: 10px !important; padding-top: 0 !important; padding-bottom: 0 !important; }
@@ -389,6 +431,13 @@ with st.sidebar:
             st.session_state.gc_cob = None
             st.session_state.gc_loc = None
             st.rerun()
+
+    st.divider()
+    st.caption(f"👤 **{st.session_state.login_user}**")
+    if st.button("🚪 Cerrar sesión", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.login_user = ""
+        st.rerun()
 
 # Aplicar filtros de gráfico — con validación para evitar df vacío
 if st.session_state.gc_cob:
