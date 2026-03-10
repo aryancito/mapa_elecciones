@@ -28,9 +28,11 @@ if not st.session_state.logged_in:
     # ── Página de login centrada ──
     _, _lc, _ = st.columns([1, 1.2, 1])
     with _lc:
-        st.markdown("""
+        with open("images/loading1.png", "rb") as _f:
+            _login_logo = "data:image/png;base64," + base64.b64encode(_f.read()).decode()
+        st.markdown(f"""
         <div style='text-align:center;padding:32px 0 16px;'>
-          <div style='font-size:48px;'>🗳️</div>
+          <img src="{_login_logo}" style='width:120px;height:120px;object-fit:contain;margin-bottom:8px;'>
           <div style='font-size:22px;font-weight:800;color:#003770;letter-spacing:-.5px;margin-top:6px;'>
             DEFENSORIA DEL PUEBLO
           </div>
@@ -164,6 +166,9 @@ if "_run_id" not in st.session_state:
 st.session_state["_run_id"] += 1
 _run_id = st.session_state["_run_id"]
 
+# Consumir el flag de skip (se activa solo al cerrar sesión)
+_skip_loading = st.session_state.pop("_skip_loading", False)
+
 # ── Overlay de carga (se oculta vía JS cuando todo está listo) ──
 with open("images/loading2.png", "rb") as _lf:
     _loading_src = "data:image/png;base64," + base64.b64encode(_lf.read()).decode()
@@ -194,15 +199,21 @@ st.components.v1.html(f"""<!-- {_run_id} -->
     doc.head.appendChild(s);
   }}
 
-  // Crear o mostrar el overlay
-  var el = doc.getElementById('st-loading-overlay');
-  if (!el) {{
-    el = doc.createElement('div');
-    el.id = 'st-loading-overlay';
-    el.innerHTML = '<img src="{_loading_src}"><span class="ld-text">Loading<span class="ld-dots">.</span></span>';
-    doc.body.appendChild(el);
+  // Crear o mostrar el overlay (solo si no se está cerrando sesión)
+  var skip = {str(_skip_loading).lower()};
+  if (skip) {{
+    var el = doc.getElementById('st-loading-overlay');
+    if (el) el.style.display = 'none';
   }} else {{
-    el.style.display = 'flex';
+    var el = doc.getElementById('st-loading-overlay');
+    if (!el) {{
+      el = doc.createElement('div');
+      el.id = 'st-loading-overlay';
+      el.innerHTML = '<img src="{_loading_src}"><span class="ld-text">Loading<span class="ld-dots">.</span></span>';
+      doc.body.appendChild(el);
+    }} else {{
+      el.style.display = 'flex';
+    }}
   }}
 }})();
 </script>
@@ -535,6 +546,7 @@ with st.sidebar:
     if st.button("🚪 Cerrar sesión", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.login_user = ""
+        st.session_state["_skip_loading"] = True
         st.rerun()
 
 # Aplicar filtros de gráfico — con validación para evitar df vacío
